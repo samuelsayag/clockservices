@@ -1,76 +1,128 @@
 package com.clockservice.model
 
+import com.clockservice._
 import java.time._
 
-sealed trait PunchingLine
-
-final case class PunchingEmpty(
-    private val employee: String,
-    private val date: LocalDate
-) extends PunchingLine
-
-final case class PunchingIn(
-    private val employee: String,
-    private val date: LocalDate,
-    private val in: OffsetTime
-) extends PunchingLine
-
-final case class PunchingOut(
-    private val employee: String,
-    private val date: LocalDate,
-    private val in: OffsetTime
-) extends PunchingLine
-
-/** Represent a punching line i.e
-  * for a given `employee` and at a given `date`
-  * an `in` value of the time it stated working
-  * and an `out` value of the time it stopped.
-  *
-  * @param employee
-  * @param in
-  * @param out
-  * @param date
+/** The [[PunchingLine]] represent the punching information
+  *  of an employee at a certain date ([[PunchingFull]])
+  * The date is always present but
+  * - the starting time ([[PunchingIn]]),
+  * - the stopping time ([[PunchingOut]])
+  * - or both may be missing ([[PunchingEmpty]]).
   */
-final case class PunchingFull(
-    private val employee: String,
-    private val date: LocalDate,
-    private val in: OffsetTime,
-    private val out: OffsetTime
-) extends PunchingLine
+sealed trait PunchingLine {
+  def date: DATE
+  def year: Year   = Year.of(date.getYear)
+  def month: Month = date.getMonth
+}
+
+final case class PunchingEmpty private (date: DATE) extends PunchingLine
+
+object PunchingEmpty {
+  import PunchingLine._
+
+  def create(check: CHECK[DATE]): DATE => Either[Exception, PunchingEmpty] =
+    (d: DATE) => check(d).map(new PunchingEmpty(_))
+
+  def apply(date: DATE): PunchingEmpty =
+    create(checkDate)(date).fold(throw _, identity)
+}
+
+final case class PunchingIn private (date: DATE, in: TIME) extends PunchingLine
+
+object PunchingIn {
+  import PunchingLine._
+
+  def create(
+      checkDate: CHECK[DATE],
+      checkTime: CHECK[TIME]
+  ): (DATE, TIME) => Either[Exception, PunchingIn] =
+    (d: DATE, t: TIME) =>
+      for {
+        d <- checkDate(d)
+        i <- checkIn(t)
+      } yield new PunchingIn(d, i)
+
+  def apply(date: DATE, in: TIME): PunchingIn =
+    create(checkDate, checkIn)(date, in).fold(throw _, identity)
+}
+
+final case class PunchingOut private (date: DATE, out: TIME)
+    extends PunchingLine
+
+object PunchingOut {
+  import PunchingLine._
+
+  def create(
+      checkDate: CHECK[DATE],
+      checkTime: CHECK[TIME]
+  ): (DATE, TIME) => Either[Exception, PunchingOut] =
+    (d: DATE, t: TIME) =>
+      for {
+        d <- checkDate(d)
+        i <- checkOut(t)
+      } yield new PunchingOut(d, i)
+
+  def apply(date: DATE, out: TIME): PunchingOut =
+    create(checkDate, checkOut)(date, out).fold(throw _, identity)
+}
+
+final case class PunchingFull private (date: LocalDate, in: TIME, out: TIME)
+    extends PunchingLine
+
+object PunchingFull {
+  import PunchingLine._
+
+  def create(
+      checkDate: CHECK[DATE],
+      checkTimeIn: CHECK[TIME],
+      checkTimeOut: CHECK[TIME]
+  ): (DATE, TIME, TIME) => Either[Exception, PunchingFull] =
+    (d: DATE, tin: TIME, tout: TIME) =>
+      for {
+        d <- checkDate(d)
+        i <- checkTimeIn(tin)
+        o <- checkTimeOut(tout)
+        _ <- checkInBeforeOut(i, o)
+      } yield new PunchingFull(d, i, o)
+
+  def apply(date: DATE, in: TIME, out: TIME): PunchingFull =
+    create(checkDate, checkIn, checkOut)(date, in, out).fold(throw _, identity)
+}
 
 object PunchingLine {
 
-  /** Base method to build a [[Punching]]
-    * - Check for null on each of the fields
-    * - Uppercase the employee
-    *
-    * @param employee the identified of an employee
-    * @param date working date
-    * @param in work starting time
-    * @param out work stopping time
-    * @return [[Punching]]
-    */
+  type CHECK[T] = T => Either[Exception, T]
+
+  def checkNull[T](field: T, fieldName: String): Either[Exception, T] =
+    Option(field).toRight(
+      new Exception(s"Field: $fieldName required found null")
+    )
+
+  val checkDate = checkNull(_: DATE, "[date: LocalDate]")
+  val checkIn   = checkNull(_: TIME, "[in: OffsetTime]")
+  val checkOut  = checkNull(_: TIME, "[out: OffsetTime]")
+
+  val checkInBeforeOut = (i: TIME, o: TIME) =>
+    Either.cond(
+      i.isBefore(o),
+      (),
+      new Exception("Time `in` must be inferior to time `out`")
+    )
+
   def create(
-      employee: String,
-      date: LocalDate,
-      in: Option[OffsetTime],
-      out: Option[OffsetTime]
-  ): Either[Exception, PunchingLine] = {
-    def checkNull[T] = (field: T, fieldName: String) =>
-      Option(field).toRight(new Exception(s"Field: $fieldName required found null"))
-
-    for {
-      e <- checkNull(employee, "[employee: String]")
-      d <- checkNull(date, "[date: LocalDate]")
-      i <- checkNull(in, "[in: OffsetTime]")
-      o <- checkNull(out, "[out: OffsetTime]")
-    } yield Punching(e.toUpperCase, d, i, o)
-  }
-
-  def apply(
-      employee: String,
-      date: LocalDate,
-      in: OffsetTime,
-      out: OffsetTime
-  ): PunchingLine = create(employee, date, in, out).fold(throw _, identity)
+      date: DATE,
+      in: Option[TIME] = None,
+      out: Option[TIME] = None
+  ): Either[Exception, PunchingLine] =
+    (checkDate(date), checkIn(in.orNull), checkOut(out.orNull)) match {
+      case (Left(e), _, _)              => Left(e)
+      case (Right(d), Left(_), Left(_)) => PunchingEmpty.create(Right(_))(d)
+      case (Right(d), Right(i), Left(_)) =>
+        PunchingIn.create(Right(_), Right(_))(d, i)
+      case (Right(d), Left(_), Right(o)) =>
+        PunchingOut.create(Right(_), Right(_))(d, o)
+      case (Right(d), Right(i), Right(o)) =>
+        PunchingFull.create(Right(_), Right(_), Right(_))(d, i, o)
+    }
 }

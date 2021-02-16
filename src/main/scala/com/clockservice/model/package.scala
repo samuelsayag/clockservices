@@ -1,6 +1,3 @@
 package com.clockservice
 
-package object model {
-
-
-}
+package object model {}
