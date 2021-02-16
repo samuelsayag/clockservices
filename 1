@@ -1,0 +1,59 @@
+package com.clockservice.model
+
+import java.time._
+
+/** Represent a punching line i.e
+  * for a given `employee` and at a given `date`
+  * an `in` value of the time it stated working
+  * and an `out` value of the time it stopped.
+  *
+  * @param employee
+  * @param in
+  * @param out
+  * @param date
+  */
+final case class Punching(
+    private val employee: String,
+    private val in: OffsetTime,
+    private val out: OffsetTime,
+    private val date: LocalDate,
+    private val status: PunchingStatus
+)
+
+object Punching {
+
+  /**
+    * Base method to build a [[Punching]]
+    * - Check for null on each of the fields
+    * - Uppercase the employee
+    *
+    * @param employee the identified of an employee
+    * @param date working date
+    * @param in work starting time
+    * @param out work stopping time 
+    * @return [[Punching]]
+    */
+  def create(
+      employee: String,
+      date: LocalDate,
+      in: OffsetTime,
+      out: OffsetTime
+  ): Either[Exception, Punching] = {
+    def checkNull[T] = (field: T, fieldName: String) =>
+      Option(field).toRight(new Exception(s"Field: $fieldName required found null"))
+
+    for {
+      e <- checkNull(employee, "[employee: String]")
+      d <- checkNull(date, "[date: LocalDate]")
+      i <- checkNull(in, "[in: OffsetTime]")
+      o <- checkNull(out, "[out: OffsetTime]")
+    } yield Punching(e.toUpperCase, d, i, o)
+  }
+
+  def apply(
+      employee: String,
+      date: LocalDate,
+      in: OffsetTime,
+      out: OffsetTime
+  ): Punching = create(employee, date, in, out).fold(throw _, identity)
+}
