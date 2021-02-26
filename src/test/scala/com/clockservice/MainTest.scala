@@ -13,24 +13,26 @@ import java.time.Duration
 
 class MainTest extends AnyFunSuite {
 
-  val reportParam   = ReportParam("bob", year(2021), month(2)).asJson.toString()
-  val punchingEmpty = PunchingParam("bob", date("2021-02-01"))
-  val punchingIn    = PunchingParam("bob", date("2021-02-01"), Some(time("08:00")))
-  val punchingOut =
+  val reportParam: String =
+    ReportParam("bob", year(2021), month(2)).asJson.toString()
+  val punchingEmpty: PunchingParam = PunchingParam("bob", date("2021-02-01"))
+  val punchingIn: PunchingParam =
+    PunchingParam("bob", date("2021-02-01"), Some(time("08:00")))
+  val punchingOut: PunchingParam =
     PunchingParam("bob", date("2021-02-01"), None, Some(time("08:00")))
-  val punchingFullD1_1 = PunchingParam(
+  val punchingFullD1_1: PunchingParam = PunchingParam(
     "bob",
     date("2021-02-01"),
     Some(time("08:00")),
     Some(time("16:30"))
   )
-  val punchingFullD1_2 = PunchingParam(
+  val punchingFullD1_2: PunchingParam = PunchingParam(
     "bob",
     date("2021-02-01"),
     Some(time("08:00")),
     Some(time("17:30"))
   )
-  val punchingFullD2 = PunchingParam(
+  val punchingFullD2: PunchingParam = PunchingParam(
     "bob",
     date("2021-02-02"),
     Some(time("10:00")),

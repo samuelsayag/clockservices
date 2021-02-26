@@ -4,18 +4,24 @@ val scalatestVersion = "3.2.3"
 val catsCore         = "2.4.2"
 val catsEffect       = "2.3.1"
 
-lazy val root = (project in file("."))
+ThisBuild / organization := "com.clockservice"
+ThisBuild / name := "clock-service"
+ThisBuild / scalaVersion := "2.13.4"
+ThisBuild / scalafixScalaBinaryVersion := "2.13"
+ThisBuild / scalacOptions ++= Seq(
+  "-Ywarn-unused:imports",
+  "-deprecation",
+  "-encoding",
+  "utf-8",
+  "-feature",
+  "-unchecked"
+)
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
+
+lazy val clockservice = (project in file("."))
   .settings(
-    organization := "com.clockservice",
-    name := "clock-service",
     version := "0.0.1-SNAPSHOT",
-    scalaVersion := "2.13.4",
-    scalacOptions ++= Seq(
-      "-Ywarn-unused:imports",
-      "-deprecation",
-      "-feature",
-      "-unchecked"
-    ),
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",

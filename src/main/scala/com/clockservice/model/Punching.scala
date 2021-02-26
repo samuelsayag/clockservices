@@ -99,16 +99,20 @@ object PunchingLine {
       new Exception(s"Field: $fieldName required found null")
     )
 
-  val checkDate = checkNull(_: DATE, "[date: LocalDate]")
-  val checkIn   = checkNull(_: TIME, "[in: OffsetTime]")
-  val checkOut  = checkNull(_: TIME, "[out: OffsetTime]")
+  val checkDate: DATE => Either[Exception, DATE] =
+    checkNull(_: DATE, "[date: LocalDate]")
+  val checkIn: TIME => Either[Exception, TIME] =
+    checkNull(_: TIME, "[in: OffsetTime]")
+  val checkOut: TIME => Either[Exception, TIME] =
+    checkNull(_: TIME, "[out: OffsetTime]")
 
-  val checkInBeforeOut = (i: TIME, o: TIME) =>
-    Either.cond(
-      i.isBefore(o),
-      (),
-      new Exception("Time `in` must be inferior to time `out`")
-    )
+  val checkInBeforeOut: (TIME, TIME) => Either[Exception, Unit] =
+    (i: TIME, o: TIME) =>
+      Either.cond(
+        i.isBefore(o),
+        (),
+        new Exception("Time `in` must be inferior to time `out`")
+      )
 
   def create(
       date: DATE,
